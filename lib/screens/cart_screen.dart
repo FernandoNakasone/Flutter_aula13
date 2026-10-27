@@ -1,4 +1,6 @@
+import 'package:aula_provider/providers/cart_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../widgets/cart_item_tile.dart';
 import '../widgets/order_summary_card.dart';
 
@@ -20,7 +22,8 @@ class CartScreen extends StatelessWidget {
     // 🎓 DIDÁTICA: context.watch escuta mudanças no CartProvider.
     // Sempre que o carrinho mudar, a tela se reconstrói com os novos totais.
     // final cart = context.watch<CartProvider>();
-    final items = [];
+    final items = context.watch<CartProvider>().items;
+    
 
     return Scaffold(
       appBar: AppBar(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../screens/cart_screen.dart';
 
 /// [CartBadge] é um componente visual para a AppBar que exibe o ícone de carrinho

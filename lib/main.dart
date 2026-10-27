@@ -1,5 +1,6 @@
 import 'package:aula_provider/providers/product_provider.dart';
-import 'package:aula_provider/services/product_service.dart';
+import 'package:aula_provider/services/product_service.dart'
+    show ProductService;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/product_list_screen.dart';
@@ -30,8 +31,13 @@ class AulaProviderApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => ProductProvider(ProductService()),
+    return MultiProvider(
+      providers: [
+        // Provedor responsável pelo catálogo de produtos e requisições HTTP
+        ChangeNotifierProvider(
+          create: (_) => ProductProvider(ProductService()),
+        ),
+      ],
       child: MaterialApp(
         title: 'FIAP E-Commerce - Provider',
         debugShowCheckedModeBanner: false,

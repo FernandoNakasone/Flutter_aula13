@@ -1,4 +1,4 @@
-import 'package:aula_provider/models/product.dart';
+import 'package:aula_provider/providers/cart_provider.dart';
 import 'package:aula_provider/providers/product_provider.dart';
 import 'package:aula_provider/widgets/product_card.dart';
 import 'package:flutter/material.dart';
@@ -16,15 +16,21 @@ class _ProductListScreenState extends State<ProductListScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
 
-  List<String> categories = [];
-  List<Product> products = [];
-  String? selectedCategory;
+  final List<String> categories = [
+    'eletronicos',
+    'roupas',
+    'calçados',
+    'acessorios',
+  ];
+
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    context.read<ProductProvider>().loadData();
+    // Agendamos o carregamento inicial para logo após o primeiro frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProductProvider>().loadInitialData();
+    });
   }
 
   @override
@@ -35,8 +41,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 🎓 DIDÁTICA: context.watch escuta as alterações no ProductProvider
     final productProvider = context.watch<ProductProvider>();
-    categories = productProvider.categories;
+    final products = productProvider.products;
+    final categories = productProvider.categories;
+    final selectedCategory = productProvider.selectedCategory;
+
     return Scaffold(
       appBar: AppBar(
         title: const Row(
@@ -57,54 +67,104 @@ class _ProductListScreenState extends State<ProductListScreen> {
       ),
       body: Column(
         children: [
-          if(categories.isNotEmpty)
           // Barra de categorias horizontal
-          SizedBox(
-            height: 48,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final isAll = index == 0;
-                final category = isAll ? null : categories[index - 1];
-                final isSelected = isAll
-                    ? selectedCategory == null
-                    : selectedCategory == category;
+          if (categories.isNotEmpty && !_isSearching)
+            SizedBox(
+              height: 48,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                scrollDirection: Axis.horizontal,
+                itemCount: categories.length + 1,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final isAll = index == 0;
+                  final category = isAll ? null : categories[index - 1];
+                  final isSelected = isAll
+                      ? selectedCategory == null
+                      : selectedCategory == category;
 
-                return FilterChip(
-                  label: Text(
-                    isAll
-                        ? 'Todos'
-                        : category!.replaceAll('-', ' ').toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
+                  return FilterChip(
+                    label: Text(
+                      isAll
+                          ? 'Todos'
+                          : category!.replaceAll('-', ' ').toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
                     ),
-                  ),
-                  selected: isSelected,
-                  onSelected: (_) {
-                    setState(() {
-                      selectedCategory = isAll ? null : category;
-                    });
-                  },
-                );
-              },
+                    selected: isSelected,
+                    onSelected: (_) {
+                      productProvider.filterByCategory(category);
+                    },
+                  );
+                },
+              ),
             ),
-          ),
 
           // Área de conteúdo principal
           Expanded(
             child: Builder(
               builder: (context) {
+                // 1. Estado de Carregamento
+                if (productProvider.isLoading) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text(
+                          'Carregando produtos da API...',
+                          style: TextStyle(fontSize: 15, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // 2. Estado de Erro
+                if (productProvider.errorMessage != null) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            size: 64,
+                            color: Colors.redAccent,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            productProvider.errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 20),
+                          FilledButton.icon(
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Tentar novamente'),
+                            onPressed: () {
+                              context.read<ProductProvider>().loadInitialData();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
                 // 4. Catálogo com GridView Responsivo
                 return RefreshIndicator(
                   onRefresh: () =>
-                    context.read<ProductProvider>().loadData()
-                  ,
+                      context.read<ProductProvider>().loadInitialData(),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final crossAxisCount = constraints.maxWidth > 900
@@ -122,7 +182,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         itemCount: products.length,
                         itemBuilder: (context, index) {
                           final product = products[index];
-                          return ProductCard(product: products[index]);
+                          return ProductCard(product: product);
                         },
                       );
                     },
